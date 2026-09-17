@@ -1,0 +1,4 @@
+.build/
+*.app
+config.local.json
+.DS_Store

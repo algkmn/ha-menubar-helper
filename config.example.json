@@ -1,0 +1,19 @@
+{
+  "baseURL": "http://homeassistant.local:8123",
+  "token": "PASTE_LONG_LIVED_TOKEN",
+  "pollInterval": 15,
+  "sensors": [
+    {
+      "name": "Salon",
+      "temperatureEntity": "sensor.sonoff_xxx_temperature",
+      "humidityEntity": "sensor.sonoff_xxx_humidity",
+      "showInMenuBar": true
+    },
+    {
+      "name": "Cosa",
+      "temperatureEntity": "sensor.cosa_temperature",
+      "humidityEntity": "sensor.cosa_humidity",
+      "showInMenuBar": true
+    }
+  ]
+}
