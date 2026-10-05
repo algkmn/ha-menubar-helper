@@ -17,14 +17,31 @@ enum SensorIcons {
         return all.filter { $0.contains(trimmed) }
     }
 
-    static func image(named name: String, pointSize: CGFloat = 12, weight: NSFont.Weight = .regular) -> NSImage? {
+    static func image(
+        named name: String,
+        pointSize: CGFloat = 12,
+        weight: NSFont.Weight = .regular,
+        hexColor: String? = nil
+    ) -> NSImage? {
         let resolved = NSImage(systemSymbolName: name, accessibilityDescription: nil)
             ?? NSImage(systemSymbolName: SensorConfig.defaultIcon, accessibilityDescription: nil)
         guard let resolved else { return nil }
+
         let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+            .applying(.preferringMonochrome())
         let configured = resolved.withSymbolConfiguration(configuration) ?? resolved
         configured.isTemplate = true
-        return configured
+
+        guard let tint = hexColor.flatMap({ NSColor(hexString: $0) }) else { return configured }
+
+        let tinted = NSImage(size: configured.size, flipped: false) { rect in
+            configured.draw(in: rect)
+            tint.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        tinted.isTemplate = false
+        return tinted
     }
 
     private static func loadCatalog() -> [String] {
@@ -47,4 +64,29 @@ enum SensorIcons {
         "car", "leaf", "sun.max", "moon.stars",
         "snowflake", "flame", "drop", "humidity", "wind", "cloud"
     ]
+}
+
+
+extension NSColor {
+    convenience init?(hexString: String) {
+        var hex = hexString.trimmingCharacters(in: .whitespacesAndNewlines)
+        if hex.hasPrefix("#") { hex.removeFirst() }
+        guard hex.count == 6, let value = UInt32(hex, radix: 16) else { return nil }
+        self.init(
+            srgbRed: CGFloat((value >> 16) & 0xFF) / 255,
+            green: CGFloat((value >> 8) & 0xFF) / 255,
+            blue: CGFloat(value & 0xFF) / 255,
+            alpha: 1
+        )
+    }
+
+    var hexString: String? {
+        guard let rgb = usingColorSpace(.sRGB) else { return nil }
+        return String(
+            format: "#%02X%02X%02X",
+            Int(round(rgb.redComponent * 255)),
+            Int(round(rgb.greenComponent * 255)),
+            Int(round(rgb.blueComponent * 255))
+        )
+    }
 }

@@ -5,7 +5,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let statusLineHeight: CGFloat = 10.5
     private static let statusBaselineOffset: CGFloat = -4.5
     private static let statusFontWeight: NSFont.Weight = .regular
-    private static let statusIconSize: CGFloat = 12
+    private static let statusIconSize: CGFloat = 14
 
     private var statusItems: [UUID: NSStatusItem] = [:]
     private var placeholderItem: NSStatusItem?
@@ -178,7 +178,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         for sensor in sensors {
             let item = statusItems[sensor.id] ?? makeStatusItem(autosaveName: "akgha-\(sensor.id.uuidString)")
-            item.button?.image = SensorIcons.image(named: sensor.icon, pointSize: Self.statusIconSize)
+            item.button?.image = SensorIcons.image(
+                named: sensor.icon,
+                pointSize: Self.statusIconSize,
+                hexColor: sensor.iconColor
+            )
             item.button?.imagePosition = .imageLeading
             item.button?.toolTip = sensor.name
             statusItems[sensor.id] = item
@@ -234,7 +238,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func statusTitle(top: String, bottom: String) -> NSAttributedString {
         let style = NSMutableParagraphStyle()
-        style.alignment = .center
+        style.alignment = .left
         style.lineSpacing = 0
         style.minimumLineHeight = Self.statusLineHeight
         style.maximumLineHeight = Self.statusLineHeight

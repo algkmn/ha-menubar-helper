@@ -84,6 +84,7 @@ final class SettingsStore: ObservableObject {
 
 private struct IconPicker: View {
     @Binding var selection: String
+    let tint: Color?
     @State private var isPresented = false
     @State private var query = ""
     @FocusState private var searchFocused: Bool
@@ -95,7 +96,9 @@ private struct IconPicker: View {
             isPresented = true
         } label: {
             Image(systemName: selection)
+                .symbolRenderingMode(.monochrome)
                 .font(.system(size: 14))
+                .foregroundStyle(tint ?? Color.primary)
                 .frame(width: 26, height: 22)
         }
         .buttonStyle(.bordered)
@@ -114,7 +117,9 @@ private struct IconPicker: View {
                                     isPresented = false
                                 } label: {
                                     Image(systemName: name)
+                                        .symbolRenderingMode(.monochrome)
                                         .font(.system(size: 15))
+                                        .foregroundStyle(tint ?? Color.primary)
                                         .frame(width: 30, height: 26)
                                         .background(
                                             RoundedRectangle(cornerRadius: 6)
@@ -148,20 +153,39 @@ private struct IconPicker: View {
     }
 }
 
+enum SensorStyle {
+    static func color(_ hex: String?) -> Color? {
+        guard let hex, let nsColor = NSColor(hexString: hex) else { return nil }
+        return Color(nsColor: nsColor)
+    }
+
+    static func hex(from color: Color) -> String? {
+        NSColor(color).hexString
+    }
+}
+
 private struct ReadingCard: View {
-    let sensor: SensorConfig
+    @Binding var sensor: SensorConfig
     let snapshot: SensorSnapshot?
 
     private var title: String {
         sensor.name.isEmpty ? "Adsız sensör" : sensor.name
     }
 
+    private var colorBinding: Binding<Color> {
+        Binding(
+            get: { SensorStyle.color(sensor.iconColor) ?? Color.accentColor },
+            set: { sensor.iconColor = SensorStyle.hex(from: $0) }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: sensor.icon)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .symbolRenderingMode(.monochrome)
+                    .font(.system(size: 13))
+                    .foregroundStyle(SensorStyle.color(sensor.iconColor) ?? Color.secondary)
                 Text(title)
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
@@ -174,6 +198,21 @@ private struct ReadingCard: View {
                         .foregroundStyle(Color.accentColor)
                         .help("Menü çubuğunda görünüyor")
                 }
+                if sensor.iconColor != nil {
+                    Button {
+                        sensor.iconColor = nil
+                    } label: {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.system(size: 10))
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help("Varsayılan renge dön")
+                }
+                ColorPicker("", selection: colorBinding, supportsOpacity: false)
+                    .labelsHidden()
+                    .controlSize(.mini)
+                    .help("İkon rengi")
             }
 
             if let error = snapshot?.error {
@@ -244,8 +283,8 @@ struct SettingsView: View {
                     .padding(.vertical, 18)
             } else {
                 LazyVGrid(columns: gridColumns, spacing: 12) {
-                    ForEach(store.sensors) { sensor in
-                        ReadingCard(sensor: sensor, snapshot: store.snapshots[sensor.id])
+                    ForEach($store.sensors) { $sensor in
+                        ReadingCard(sensor: $sensor, snapshot: store.snapshots[sensor.id])
                     }
                 }
             }
@@ -303,7 +342,10 @@ struct SettingsView: View {
                 .toggleStyle(.checkbox)
                 .labelsHidden()
                 .help("Menü çubuğunda göster")
-            IconPicker(selection: sensor.icon)
+            IconPicker(
+                selection: sensor.icon,
+                tint: SensorStyle.color(sensor.wrappedValue.iconColor)
+            )
             TextField("Ad", text: sensor.name)
                 .frame(width: 215)
             VStack(spacing: 6) {

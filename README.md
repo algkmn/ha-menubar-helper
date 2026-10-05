@@ -10,7 +10,7 @@ Menü çubuğundaki değerlere tıklamak ana pencereyi açar; açılır menü yo
 
 - sunucu adresi, uzun ömürlü erişim anahtarı ve yenileme aralığı düzenlenir
 - sensör grupları eklenir, silinir, adı, ikonu ve entity'leri değiştirilir
-- ikon, satırdaki ikon düğmesinden açılan sistem sembolü listesinden seçilir
+- ikon, satırdaki ikon düğmesinden açılan sistem sembolü listesinden seçilir; aynı yerden ikona renk verilir ("Varsayılan renk" menü çubuğu rengine döner)
 - her grubun menü çubuğunda görünüp görünmeyeceği kutucukla seçilir
 - grupların o anki sıcaklık/nem değerleri ve son güncelleme zamanı görünür
 - "Açılışta Başlat" açılıp kapatılır, "Çıkış" uygulamayı kapatır
@@ -38,7 +38,7 @@ Menü çubuğundaki değerlere tıklamak ana pencereyi açar; açılır menü yo
 
 Token: Home Assistant > Profil > Güvenlik > Uzun Ömürlü Erişim Anahtarları.
 
-`icon` bir SF Symbols adıdır; boş veya tanınmayan bir ad verilirse `thermometer.medium` kullanılır.
+`icon` bir SF Symbols adıdır; boş veya tanınmayan bir ad verilirse `thermometer.medium` kullanılır. `iconColor` isteğe bağlıdır (`"#RRGGBB"`); verilmezse ikon menü çubuğunun kendi rengini alır.
 
 Tek sensörlü eski biçim (`temperatureEntity` / `humidityEntity` en üst düzeyde) okunmaya devam eder; ilk kaydetmede `sensors` dizisine dönüştürülür.
 

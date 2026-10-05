@@ -7,6 +7,7 @@ struct SensorConfig: Codable, Identifiable, Equatable, Sendable {
     var humidityEntity: String
     var showInMenuBar: Bool
     var icon: String
+    var iconColor: String?
 
     static let defaultIcon = "thermometer.medium"
 
@@ -16,7 +17,8 @@ struct SensorConfig: Codable, Identifiable, Equatable, Sendable {
         temperatureEntity: String,
         humidityEntity: String,
         showInMenuBar: Bool = true,
-        icon: String = SensorConfig.defaultIcon
+        icon: String = SensorConfig.defaultIcon,
+        iconColor: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -24,10 +26,11 @@ struct SensorConfig: Codable, Identifiable, Equatable, Sendable {
         self.humidityEntity = humidityEntity
         self.showInMenuBar = showInMenuBar
         self.icon = icon
+        self.iconColor = iconColor
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, temperatureEntity, humidityEntity, showInMenuBar, icon
+        case id, name, temperatureEntity, humidityEntity, showInMenuBar, icon, iconColor
     }
 
     init(from decoder: Decoder) throws {
@@ -40,6 +43,8 @@ struct SensorConfig: Codable, Identifiable, Equatable, Sendable {
         name = decodedName.isEmpty ? SensorConfig.derivedName(from: temperatureEntity) : decodedName
         let decodedIcon = try container.decodeIfPresent(String.self, forKey: .icon) ?? ""
         icon = decodedIcon.isEmpty ? SensorConfig.defaultIcon : decodedIcon
+        let decodedColor = try container.decodeIfPresent(String.self, forKey: .iconColor) ?? ""
+        iconColor = decodedColor.isEmpty ? nil : decodedColor
     }
 
     var isUsable: Bool {
