@@ -5,9 +5,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let statusLineHeight: CGFloat = 10.5
     private static let statusBaselineOffset: CGFloat = -4.5
     private static let statusFontWeight: NSFont.Weight = .regular
-    private static let statusColumnGap: CGFloat = 9
+    private static let statusIconSize: CGFloat = 12
 
-    private var statusItem: NSStatusItem!
+    private var statusItems: [UUID: NSStatusItem] = [:]
+    private var placeholderItem: NSStatusItem?
     private var timer: Timer?
     private var config: AppConfig?
     private var client: HAClient?
@@ -20,14 +21,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if activateRunningInstance() {
             NSApp.terminate(nil)
             return
-        }
-
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let button = statusItem.button {
-            button.imagePosition = .noImage
-            button.target = self
-            button.action = #selector(statusItemClicked)
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
         store.onSave = { [weak self] in self?.saveSettings() }
@@ -119,15 +112,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         config = loaded
         store.load(from: loaded ?? AppConfig.template)
 
+        rebuildStatusItems()
+
         if let loaded, loaded.isUsable {
             client = HAClient(config: loaded)
-            if !hasData { setStatusColumns([]) }
+            if !hasData { renderStatusItems([:]) }
             startTimer()
         } else {
             client = nil
             hasData = false
             timer?.invalidate()
-            setStatusColumns([], fallback: ("ayar", "yok"))
+            renderStatusItems([:], fallback: ("ayar", "yok"))
             store.status = "Sunucu adresi ve token gerekli"
         }
     }
@@ -162,14 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let succeeded = snapshots.values.contains { $0.error == nil }
         hasData = hasData || succeeded
 
-        let columns = (config?.menuBarSensors ?? []).map { sensor -> (String, String) in
-            let snapshot = snapshots[sensor.id]
-            return (
-                Format.temperature(snapshot?.temperature),
-                Format.humidity(snapshot?.humidity)
-            )
-        }
-        setStatusColumns(columns, fallback: hasData ? nil : ("bağlantı", "yok"))
+        renderStatusItems(snapshots, fallback: hasData ? nil : ("bağlantı", "yok"))
 
         if succeeded {
             store.status = "Güncellendi \(Format.time())"
@@ -179,36 +167,85 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func setStatusColumns(_ columns: [(String, String)], fallback: (String, String)? = nil) {
-        guard let button = statusItem.button else { return }
-        let columns = columns.isEmpty ? [fallback ?? (Format.placeholder, Format.placeholder)] : columns
-        let font = NSFont.monospacedDigitSystemFont(ofSize: Self.statusFontSize, weight: Self.statusFontWeight)
-        let measure: [NSAttributedString.Key: Any] = [.font: font]
+    private func rebuildStatusItems() {
+        let sensors = config?.menuBarSensors ?? []
+        let wanted = Set(sensors.map(\.id))
 
-        var tabStops: [NSTextTab] = []
-        var x: CGFloat = 0
-        for column in columns {
-            let top = (column.0 as NSString).size(withAttributes: measure).width
-            let bottom = (column.1 as NSString).size(withAttributes: measure).width
-            let width = max(top, bottom)
-            tabStops.append(NSTextTab(textAlignment: .center, location: x + width / 2, options: [:]))
-            x += width + Self.statusColumnGap
+        for (id, item) in statusItems where !wanted.contains(id) {
+            NSStatusBar.system.removeStatusItem(item)
+            statusItems[id] = nil
         }
 
+        for sensor in sensors {
+            let item = statusItems[sensor.id] ?? makeStatusItem(autosaveName: "akgha-\(sensor.id.uuidString)")
+            item.button?.image = SensorIcons.image(named: sensor.icon, pointSize: Self.statusIconSize)
+            item.button?.imagePosition = .imageLeading
+            item.button?.toolTip = sensor.name
+            statusItems[sensor.id] = item
+        }
+
+        if sensors.isEmpty {
+            if placeholderItem == nil {
+                placeholderItem = makeStatusItem(autosaveName: "akgha-placeholder")
+                placeholderItem?.button?.image = SensorIcons.image(
+                    named: SensorConfig.defaultIcon,
+                    pointSize: Self.statusIconSize
+                )
+                placeholderItem?.button?.imagePosition = .imageLeading
+            }
+        } else if let placeholder = placeholderItem {
+            NSStatusBar.system.removeStatusItem(placeholder)
+            placeholderItem = nil
+        }
+    }
+
+    private func makeStatusItem(autosaveName: String) -> NSStatusItem {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.autosaveName = autosaveName
+        if let button = item.button {
+            button.target = self
+            button.action = #selector(statusItemClicked)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
+        return item
+    }
+
+    private func renderStatusItems(_ snapshots: [UUID: SensorSnapshot], fallback: (String, String)? = nil) {
+        for sensor in config?.menuBarSensors ?? [] {
+            guard let button = statusItems[sensor.id]?.button else { continue }
+            let snapshot = snapshots[sensor.id]
+            let lines: (String, String)
+            if snapshot == nil, let fallback {
+                lines = fallback
+            } else {
+                lines = (
+                    Format.temperature(snapshot?.temperature),
+                    Format.humidity(snapshot?.humidity)
+                )
+            }
+            button.attributedTitle = statusTitle(top: lines.0, bottom: lines.1)
+        }
+
+        if let button = placeholderItem?.button {
+            let lines = fallback ?? (Format.placeholder, Format.placeholder)
+            button.attributedTitle = statusTitle(top: lines.0, bottom: lines.1)
+        }
+    }
+
+    private func statusTitle(top: String, bottom: String) -> NSAttributedString {
         let style = NSMutableParagraphStyle()
-        style.alignment = .left
+        style.alignment = .center
         style.lineSpacing = 0
         style.minimumLineHeight = Self.statusLineHeight
         style.maximumLineHeight = Self.statusLineHeight
-        style.tabStops = tabStops
-        style.defaultTabInterval = max(x, 1)
 
-        let top = columns.map { "\t" + $0.0 }.joined()
-        let bottom = columns.map { "\t" + $0.1 }.joined()
-        button.attributedTitle = NSAttributedString(
+        return NSAttributedString(
             string: top + "\n" + bottom,
             attributes: [
-                .font: font,
+                .font: NSFont.monospacedDigitSystemFont(
+                    ofSize: Self.statusFontSize,
+                    weight: Self.statusFontWeight
+                ),
                 .paragraphStyle: style,
                 .baselineOffset: Self.statusBaselineOffset,
                 .foregroundColor: NSColor.labelColor

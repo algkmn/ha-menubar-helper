@@ -5,12 +5,14 @@
   "sensors": [
     {
       "name": "Salon",
+      "icon": "sofa",
       "temperatureEntity": "sensor.sonoff_xxx_temperature",
       "humidityEntity": "sensor.sonoff_xxx_humidity",
       "showInMenuBar": true
     },
     {
       "name": "Cosa",
+      "icon": "bed.double",
       "temperatureEntity": "sensor.cosa_temperature",
       "humidityEntity": "sensor.cosa_humidity",
       "showInMenuBar": true

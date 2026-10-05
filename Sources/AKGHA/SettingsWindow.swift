@@ -82,6 +82,72 @@ final class SettingsStore: ObservableObject {
     }
 }
 
+private struct IconPicker: View {
+    @Binding var selection: String
+    @State private var isPresented = false
+    @State private var query = ""
+    @FocusState private var searchFocused: Bool
+
+    private let columns = Array(repeating: GridItem(.fixed(30), spacing: 4), count: 9)
+
+    var body: some View {
+        Button {
+            isPresented = true
+        } label: {
+            Image(systemName: selection)
+                .font(.system(size: 14))
+                .frame(width: 26, height: 22)
+        }
+        .buttonStyle(.bordered)
+        .help("İkon seç")
+        .popover(isPresented: $isPresented, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Sembol ara", text: $query)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($searchFocused)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 4) {
+                            ForEach(results, id: \.self) { name in
+                                Button {
+                                    selection = name
+                                    isPresented = false
+                                } label: {
+                                    Image(systemName: name)
+                                        .font(.system(size: 15))
+                                        .frame(width: 30, height: 26)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .fill(name == selection ? Color.accentColor.opacity(0.18) : Color.clear)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .help(name)
+                                .id(name)
+                            }
+                        }
+                    }
+                    .onAppear {
+                        proxy.scrollTo(selection, anchor: .center)
+                        searchFocused = true
+                    }
+                }
+                .frame(height: 230)
+                Text(results.isEmpty ? "Eşleşen sembol yok" : selection)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(12)
+            .frame(width: 340)
+        }
+    }
+
+    private var results: [String] {
+        SensorIcons.search(query)
+    }
+}
+
 private struct ReadingCard: View {
     let sensor: SensorConfig
     let snapshot: SensorSnapshot?
@@ -93,6 +159,9 @@ private struct ReadingCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
+                Image(systemName: sensor.icon)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
                 Text(title)
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
@@ -202,7 +271,7 @@ struct SettingsView: View {
                 }
                 .controlSize(.small)
             }
-            Text("İşaretli sensörler menü çubuğunda görünür.")
+            Text("İşaretli sensörler menü çubuğunda kendi ikonlarıyla görünür.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 
@@ -234,6 +303,7 @@ struct SettingsView: View {
                 .toggleStyle(.checkbox)
                 .labelsHidden()
                 .help("Menü çubuğunda göster")
+            IconPicker(selection: sensor.icon)
             TextField("Ad", text: sensor.name)
                 .frame(width: 215)
             VStack(spacing: 6) {
